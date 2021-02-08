@@ -1,0 +1,78 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "bootloader build",
+			"command": "make",
+			"args": [
+				"build_bootloader"
+			],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "bootloader program",
+			"command": "make",
+			"args": [
+				"write_bootloader"
+			],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "fuse",
+			"command": "make",
+			"args": [
+				"write_fuse"
+			],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "read program",
+			"command": "make",
+			"args": [
+				"read_program"
+			],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "build program",
+			"command": "make",
+			"args": [
+				"build_program"
+			],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "write program",
+			"command": "make",
+			"args": [
+				"write_program"
+			],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "extra",
+			"command": "make",
+			"args": [
+				"extra"
+			],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "read eeprom",
+			"command": "make",
+			"args": [
+				"read_eeprom"
+			],
+			"group": "build",
+			"problemMatcher": []
+		}
+	]
+}
+
