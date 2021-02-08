@@ -1,11 +1,14 @@
 #define __AVR_ATmega328P__
 #define F_CPU 16000000
-#include "avr/io.h"
-#include "util/delay.h"
-#include "avr/boot.h"
 #include "stdint.h"
+#include "avr/io.h"
+#include "avr/boot.h"
 #include "avr/interrupt.h"
 #include "avr/eeprom.h"
+#include "avr/pgmspace.h"
+
+#include "util/delay.h"
+
 
 #define DEBUG_STRINGS
 
@@ -174,6 +177,7 @@ typedef enum Commands
     COMMAND_WRITE_EEPROM_BYTE = 6,
     COMMAND_READ_EEPROM_BYTE = 7,
 
+    COMMAND_READ_DEVICE_SIGNATURE = 8,
     COMMAND_GO_TO_APPLICATION = 200, // Run main application
 };
 
@@ -277,7 +281,8 @@ main()
                 uint16_t got_address = page;
                 while (page < (got_address + SPM_PAGESIZE))
                 {
-                    Uart_Transmit(pgm_read_byte(page));
+                    Uart_Transmit(pgm_read_byte(page++));
+                    // boot_page_fill
                 }
 
                 // Do data validation
@@ -427,6 +432,24 @@ main()
                 Uart_Transmit(RESPONSE_OK);
                 Uart_Transmit(0xAA);
 
+                // Go back pooling requests
+                state = STATE_POOL_REQUEST;
+                break;
+            }
+
+            case COMMAND_READ_DEVICE_SIGNATURE:
+            {
+                Uart_Transmit(0x55);
+                Uart_Transmit(boot_signature_byte_get(0x00)); // Device signature 1
+                Uart_Transmit(boot_signature_byte_get(0x02)); // Device signature 2
+                Uart_Transmit(boot_signature_byte_get(0x04)); // Device signature 3
+                // Uart_Transmit(boot_signature_byte_get(0x01)); // RC calibration value
+                // Uart_Transmit(boot_signature_byte_get(0x02)); // Temperature sensor offset
+                // Uart_Transmit(boot_signature_byte_get(0x03)); // Temperature sensor gain
+
+                Uart_Transmit(RESPONSE_OK);
+                Uart_Transmit(0xAA);
+                
                 // Go back pooling requests
                 state = STATE_POOL_REQUEST;
                 break;

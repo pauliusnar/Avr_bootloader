@@ -1,6 +1,43 @@
-:100000000153545046006400FFFFFFFFFFFFFFFF56
-:1000100000000001FFFFFFFFFFFFFFFFFFFFFFFFEB
-:1000200000000001FFFFFFFFFFFFFFFFFFFFFFFFDB
+:10000000ADFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF52
+-Address = 0x0000 
+
+-Value of byte 0: Byte is set to 01h when device is already programmed
+        FFh = unprogrammed
+        01h = programmed
+
+-Value of byte [1:4]: Module name 
+        hFFFF when unprogrammed
+        h53545046 = STPF - Front stepper 
+        h53545042 = STPB - Back stepper
+        h57494e31 = WIN1 - Windows 1 (counted from back)
+        h57494e32 = WIN2 - Windows 2 (counted from back)
+        h57494e33 = WIN3 - Windows 3 (counted from back)
+
+-Value of byte [5:6]: Firmware version
+        Example h1234 = 4660 / 1000 = v4.660
+        hFFFF when unprogrammed
+        Byte 0 = VER_H - MSB of the version
+        Byte 1 = VER_L - LSB of the version
+
+-Value of byte [7:8]: Power limit (unsigned 16 bit)
+        hFFFF when unprogrammed
+        hxxxx = Power limit
+
+:10001000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0
+-Address = 0x0010 
+
+-Value of byte [0:4]: Number of actuator moves (unsigned 32 bit)
+        hxxxxxxxx = x - Numbers of actuator moves
+
+
+:10002000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE0
+-Address = 0x0020 
+
+-Value of byte [0:4]: Number of communication errors (unsigned 32 bit)
+        hxxxxxxxx = x - Number of communication errors
+
+
+
 :10003000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD0
 :10004000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC0
 :10005000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFB0
@@ -14,7 +51,7 @@
 :1000D000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF30
 :1000E000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF20
 :1000F000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF10
-:10010000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+:10010000ADFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF51
 :10011000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEF
 :10012000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDF
 :10013000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFCF

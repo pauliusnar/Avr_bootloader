@@ -3,11 +3,14 @@ import serial
 import time
 import sys
 import os
+import codecs
 from datetime import datetime
 import serial.tools.list_ports
 import numpy as np
 os.system('color')
 # region COLORED TERMINAL
+
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -37,7 +40,7 @@ ports = serial.tools.list_ports.comports()
 portname = ""
 
 for port in ports:
-    print(port.device)
+    # print(port.device)
     if(port.hwid == "USB VID:PID=0403:6001 SER=SWITCHA"):
         portname = port.device
         print("--Connected to a device " + port.device +
@@ -84,8 +87,7 @@ def CRC16_calculate(data, len):
 # endregion
 
 
-
-def Send_Command(Command,arg0,arg1,arg2,arg3,arg4,arg5):
+def Send_Command(Command, arg0, arg1, arg2, arg3, arg4, arg5):
     packet = bytearray()
     packet.append(STARTBYTE)  # Sync-start byte
     packet.append(Command)  # Command
@@ -96,12 +98,14 @@ def Send_Command(Command,arg0,arg1,arg2,arg3,arg4,arg5):
     packet.append(arg4)  # Argument 4
     packet.append(arg5)  # Argument 5
     ser.write(packet)
-    while (ser.out_waiting > 0) :
+    while (ser.out_waiting > 0):
         pass
     time.sleep(STANDART_SLEEP)
 
+
 def Parse_Response(input):
     print("response")
+
 
 def Unit_Test():
     test_ok = 0
@@ -124,8 +128,6 @@ def Unit_Test():
     # mystring = mystring + '{0: >{width}}'.format(str(data[7]), width=width)
     # mystring = mystring + bcolors.ENDC
 
-
-
     testvar = Get_Page_Size(0)
     print("Pagesize :", end='')
     if(testvar == 128):
@@ -135,24 +137,28 @@ def Unit_Test():
         print("ERROR - " + str(testvar))
         test_err + 1
 
+
 pagesize = 128
 STARTBYTE = 0x55
 
-COMMAND_GET_PAGE_SIZE = 1  # Responses with pagesize value (16+bits)
-COMMAND_SET_PAGE = 2      # Sets page
-COMMAND_GET_CHECKSUM = 3  # Master sends checksum to AVR
-COMMAND_GET_DATA = 4      # Receives data from master (program memory)
-COMMAND_FLASH_WRITE_DATA = 5  # Flashes received data to memory if data is validated
-COMMAND_VALIDATE_DATA = 6  # Do data validation
-COMMAND_FLASH_PAGE_ERASE = 7  # Do data validation
-COMMAND_GO_TO_APPLICATION = 8  # Run main application
+COMMAND_GET_VERSION = 0
+COMMAND_GET_CHIP = 1
+COMMAND_GET_MODULE_NAME = 2
+COMMAND_WRITE_FLASH_PAGE = 3
+COMMAND_READ_FLASH_PAGE = 4
+COMMAND_READ_FLASH_PAGE_SIZE = 5
+COMMAND_WRITE_EEPROM_BYTE = 6
+COMMAND_READ_EEPROM_BYTE = 7
+COMMAND_READ_DEVICE_SIGNATURE = 8
+COMMAND_GO_TO_APPLICATION = 200
+
 
 STANDART_SLEEP = 0.5
 
 
 def Get_Page_Size(echo=1):
     # print(ser.read_all())
-    Send_Command(0x05,0,0,0,0,0,0)
+    Send_Command(COMMAND_READ_FLASH_PAGE_SIZE, 0, 0, 0, 0, 0, 0)
     # print(ser.read_all())
     myvar = ser.read_all()
     result = myvar[2] + (myvar[1] << 8)
@@ -161,67 +167,126 @@ def Get_Page_Size(echo=1):
 
     return result
 
+
 def Go_To_App(echo=1):
 
-    Send_Command(0xC8,0,0,0,0,0,0)
+    Send_Command(COMMAND_GO_TO_APPLICATION, 0, 0, 0, 0, 0, 0)
 
     var = ser.read_all()
     print("-GO_TO_APP_RESPONSE =" + str(var))
 
-def Write_To_Flash(page_address, input, echo=1):
-    print("- Bytes to write to page = "+str(len(input)))
-    packet = bytearray()
-    packet.append(0x55)            # Sync-start byte
-    packet.append(0x03)                    # Command
-    packet.append(0)                    # Argument 0 // Argument_0 - PAGE  3
-    packet.append(0)                    # Argument 1 // Argument_1 - PAGE  2
-    packet.append(page_address >> 8)    # Argument 2 // Argument_2 - PAGE  1
-    packet.append(page_address & 0xFF)  # Argument 3 // Argument_3 - PAGE  0
-    packet.append(0)                    # Argument 4 // Argument_4 - CRC16 1
-    packet.append(0)                    # Argument 5 // Argument_5 - CRC16 0
-    ser.write(packet)
-    packet.clear()
-    time.sleep(0.5)
 
+def Write_To_Flash(page_address, input, echo=1):
+
+    # Calculate CRC16
+    CRC16 = 0
+    # Send command
+    Send_Command(COMMAND_WRITE_FLASH_PAGE, 0, 0, (page_address >> 8),
+                 (page_address & 0xFF), (CRC16 >> 8), CRC16 & 0xFF)
+
+    # Receive response
+    myvar = ser.read_all()
+    if echo:
+        print("-Request - Write_To_Flash = " + str(myvar))
 
     length = len(input)
+    packet = bytearray()
 
+    # Collect program data
     for i in range(0, length):
         packet.append(input[i])
-
     for i in range(length, pagesize):
         packet.append(0xFF)
 
+    # Send program data
     ser.write(packet)
-    while (ser.out_waiting > 0) :
+    while (ser.out_waiting > 0):
         pass
-
     time.sleep(STANDART_SLEEP)
-    print("- Write_To_Flash response -" + str(ser.read_all()))
-    print(ser.read_all())
 
-def Read_Eeprom_Byte(address,echo=1):
-    Send_Command(0x07,0,0,(address>>8),(address&0xFF),0,0)
+    # Print response
+    print("- Write_To_Flash response -" + str(ser.read_all()))
+
+
+def Read_Eeprom_Byte(address, echo=1):
+    Send_Command(COMMAND_READ_EEPROM_BYTE, 0, 0,
+                 (address >> 8), (address & 0xFF), 0, 0)
     var = ser.read_all()
     if(echo == 1):
         print("-Read eeprom response =" + str(var))
 
-def Write_Eeprom_Byte(address,w_byte,echo=1):
-    Send_Command(0x06,0,0,(address>>8),(address&0xFF),0,w_byte)
+
+def Write_Eeprom_Byte(address, w_byte, echo=1):
+    Send_Command(COMMAND_WRITE_EEPROM_BYTE, 0, 0,
+                 (address >> 8), (address & 0xFF), 0, w_byte)
     var = ser.read_all()
     if(echo == 1):
         print("-Write eeprom response =" + str(var))
 
-def Read_Flash_Page(address,echo=1):
-    Send_Command(0x04,0,0,(address>>8),(address&0xFF),0,0)
+
+def Read_Flash_Page(address, echo=1):
+    Send_Command(COMMAND_READ_FLASH_PAGE, 0, 0,
+                 (address >> 8), (address & 0xFF), 0, 0)
     var = ser.read_all()
     if(echo == 1):
         print("-Read flash response =" + str(var))
 
 
+def Read_Device_signature(echo=1):
+    Send_Command(COMMAND_READ_DEVICE_SIGNATURE, 0, 0, 0, 0, 0, 0)
+    var = ser.read_all()
+    if(echo == 1):
+        print("-COMMAND_READ_DEVICE_SIGNATURE response =" + str(var))
+
+
+def Program_Eeprom_Configuration(isProgrammed, ModuleName, FirmwareVersion, PowerLimit, ActuatorCount, CommunicationErrors):
+    print("-Write device configuration to EEPROM")
+    # Programmed byte
+    Write_Eeprom_Byte(0x00, isProgrammed, 0)  # programmed
+    print("-Programmed byte   OK")
+
+    # Module name
+    if(len(ModuleName) != 4):
+        print("Module name parsing error")
+        return -1
+    for i in range(4):
+        # mychar = ModuleName[i]
+        number = int(np.fromstring(ModuleName[i], dtype=np.uint8))
+        Write_Eeprom_Byte(i+1, number, 0)  # programmed
+        print("-Debug module name =" + str(number))
+    print("-Module name       OK")
+
+    # Module version
+    FirmwareVersion = (int)(FirmwareVersion * 1000)
+    Firmware_High = (int)(FirmwareVersion - (int)(FirmwareVersion)) # x.100
+    Firmware_Low = (int)(FirmwareVersion%1000)
+    Write_Eeprom_Byte(5, Firmware_High, 0)
+    Write_Eeprom_Byte(6, Firmware_Low, 0)
+    print("-Version           OK")
+
+    # Power limit set
+    Write_Eeprom_Byte(7, PowerLimit >> 8, 0)
+    Write_Eeprom_Byte(8, PowerLimit & 0xFF, 0)
+    print("-Power limit       OK")
+
+    # Actuator move count
+    Write_Eeprom_Byte(0x0010, (ActuatorCount >> 24) & 0xFF, 0)
+    Write_Eeprom_Byte(0x0011, (ActuatorCount >> 16) & 0xFF, 0)
+    Write_Eeprom_Byte(0x0012, (ActuatorCount >> 8) & 0xFF, 0)
+    Write_Eeprom_Byte(0x0013, (ActuatorCount >> 0) & 0xFF, 0)
+    print("-Actuator count    OK")
+
+    # Communication errors
+    Write_Eeprom_Byte(0x0020, (ActuatorCount >> 24) & 0xFF, 0)
+    Write_Eeprom_Byte(0x0021, (ActuatorCount >> 16) & 0xFF, 0)
+    Write_Eeprom_Byte(0x0022, (ActuatorCount >> 8) & 0xFF, 0)
+    Write_Eeprom_Byte(0x0023, (ActuatorCount >> 0) & 0xFF, 0)
+    print("-Communication errors OK")
+
 
 
 # Test()
+
 
 program_str = ""
 
@@ -242,39 +307,49 @@ for i in range(0, pages_total*pagesize, pagesize):
 time.sleep(STANDART_SLEEP)
 print("- Starting buffer= [start] " + str(ser.read_all()))
 
-Write_Eeprom_Byte(0x100,0xAD,1)
-Read_Eeprom_Byte(0x100,1)
-Read_Flash_Page(0,1)
+# Write_Eeprom_Byte(0x100,0xAD,1)
+# Read_Eeprom_Byte(0x100,1)
 
 
 # Unit_Test()
+Write_Eeprom_Byte(0x020, 0xFF, 0)
+Write_Eeprom_Byte(0x021, 0xFF, 0)
+Write_Eeprom_Byte(0x022, 0xFF, 0)
+Write_Eeprom_Byte(0x023, 0xFF, 0)
 
-# Get_Page_Size()
+Program_Eeprom_Configuration(1, 'STPF', 0.100 , 255, 1, 0)
+Program_Eeprom_Configuration(1, 'STPB', 0.100 , 255, 1, 0)
+Program_Eeprom_Configuration(1, 'WIN1', 0.100 , 255, 1, 0)
+Program_Eeprom_Configuration(1, 'WIN2', 0.100 , 255, 1, 0)
+Program_Eeprom_Configuration(1, 'WIN3', 0.100 , 255, 1, 0)
+
+
+# Read_Device_signature(1)
+# Get_Page_Size(1)
 # for i in range(pages_total):
-#     time.sleep(STANDART_SLEEP)
-#     Write_To_Flash(i*pagesize, page[i], 1)
+# time.sleep(STANDART_SLEEP)
+# Write_To_Flash(i*pagesize, page[i], 1)
+
+# Read_Flash_Page(0,1)
+
 
 # Go_To_App()
 
 
 # * END --------------------------------------------------------------------------------------------------------------------------
 
+# mystring = ''
+# if (data[2] == COMM_ADDRESS_PC):
+#     mystring = bcolors.WARNING
+# else:
+#     mystring = bcolors.OKBLUE
 
-
-
-
-    # mystring = ''
-    # if (data[2] == COMM_ADDRESS_PC):
-    #     mystring = bcolors.WARNING
-    # else:
-    #     mystring = bcolors.OKBLUE
-
-    # width = 15
-    # mystring = mystring + '{0: >{width}}'.format(comment, width=width)
-    # mystring = mystring + '{0: >{width}}'.format(str(data[2]), width=width)
-    # mystring = mystring + '{0: >{width}}'.format(str(data[3]), width=width)
-    # mystring = mystring + '{0: >{width}}'.format(str(data[4]), width=width)
-    # mystring = mystring + '{0: >{width}}'.format(str(data[5]), width=width)
-    # mystring = mystring + '{0: >{width}}'.format(str(data[6]), width=width)
-    # mystring = mystring + '{0: >{width}}'.format(str(data[7]), width=width)
-    # mystring = mystring + bcolors.ENDC
+# width = 15
+# mystring = mystring + '{0: >{width}}'.format(comment, width=width)
+# mystring = mystring + '{0: >{width}}'.format(str(data[2]), width=width)
+# mystring = mystring + '{0: >{width}}'.format(str(data[3]), width=width)
+# mystring = mystring + '{0: >{width}}'.format(str(data[4]), width=width)
+# mystring = mystring + '{0: >{width}}'.format(str(data[5]), width=width)
+# mystring = mystring + '{0: >{width}}'.format(str(data[6]), width=width)
+# mystring = mystring + '{0: >{width}}'.format(str(data[7]), width=width)
+# mystring = mystring + bcolors.ENDC
