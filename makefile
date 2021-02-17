@@ -201,7 +201,7 @@ build_program: main.c
 	avr-size -d --mcu=atmega328p main.hex
 
 write_program:
-	atprogram -t pickit4 -d atmega328p -i ISP -cl 4mhz -f program -f main.hex
+	atprogram -t pickit4 -d atmega328p -i ISP -cl 2mhz -f program -c --verify -f main.hex
 		
 extra: write_bootloader delay read_program
 	avr-size -d --mcu=atmega328p bootloader.hex

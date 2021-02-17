@@ -56,8 +56,11 @@ void USART_transmit_string(char *s)
 int main()
 {
     Init_Uart();
-    Set_Led_PCB(1);
-    USART_transmit_string("-Application-");
-    
+    // Set_Led_PCB(1);
+    while(1)
+    {
+        USART_transmit_string("-APP");
+        _delay_ms(900);
+    }
 
 }
